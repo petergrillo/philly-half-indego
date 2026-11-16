@@ -1,0 +1,12 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {distanceToRoute,joinStations,isStale,filterStations,stationColor,escapeHTML} from '../core.js';
+const route=[[-75.16,39.95],[-75.15,39.95]];
+const now=1794836323000;
+const info={data:{stations:[{station_id:'a',name:'Test & Walnut',lat:39.95,lon:-75.155},{station_id:'b',name:'Far',lat:39.96,lon:-75.155}]}};
+const status={data:{stations:[{station_id:'a',num_bikes_available:3,num_docks_available:0,num_bikes_available_types:{electric:2},is_installed:1,is_renting:0,is_returning:1,last_reported:now/1000}]}};
+test('distance projects to segment and respects endpoints',()=>{assert.ok(distanceToRoute(-75.155,39.95,route).distance<.01);assert.ok(distanceToRoute(-75.155,39.951,route).distance>110);assert.ok(distanceToRoute(-75.14,39.95,route).distance>850);});
+test('missing status stays unknown and closed rentals do not count as available',()=>{const rows=joinStations(info,status,route);assert.equal(rows[1].bikes,null);assert.equal(stationColor(rows[0]),'unknown');assert.equal(filterStations(rows,{availability:'bikes',distance:'all'},now).length,0);assert.equal(filterStations(rows,{availability:'electric',distance:'all'},now).length,0);});
+test('stale data is excluded from availability filters',()=>{const rows=joinStations(info,status,route);rows[0].renting=true;assert.equal(filterStations(rows,{availability:'bikes'},now).length,1);assert.equal(filterStations(rows,{availability:'bikes'},now+360000).length,0);assert.equal(isStale(rows[1],now),true);});
+test('search and radius filter station list consistently',()=>{const rows=joinStations(info,status,route);assert.equal(filterStations(rows,{query:'walnut',distance:'150'},now).length,1);assert.equal(filterStations(rows,{distance:'150'},now).length,1);assert.equal(filterStations(rows,{distance:'all'},now).length,2);});
+test('station text is escaped before rendering',()=>{assert.equal(escapeHTML('<script>"&'), '&lt;script&gt;&quot;&amp;');});
