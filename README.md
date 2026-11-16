@@ -35,3 +35,15 @@ See [Indego's official data page](https://www.rideindego.com/about/data/). A bun
 ## Credits
 
 [Leaflet 1.9.4](https://leafletjs.com), BSD-2-Clause, vendored under `vendor/` with its license. Basemap © [OpenStreetMap contributors](https://www.openstreetmap.org/copyright). Bike data: Indego / Bicycle Transit Systems. Independent spectator tool, unaffiliated with Indego or Philadelphia Marathon Weekend.
+
+## Spectator planner
+
+Use the station checkboxes to choose stations, then enable **Show selected only** to hide the others. **Runners & plan** supports up to 20 friends with individual paces, start-line crossing times and optional bibs. You can enter an observed distance/time split to anchor subsequent projections. Enter paces as `min:sec` per mile; all clocks are November 21, 2026 in Philadelphia (EST).
+
+The time slider moves projected runner markers along the approximate course. Add viewing stops from selected stations or a course mile to see each friend's estimated arrival window. Stations within 300 metres of multiple separate course passes can create multiple viewing stops. Course mileage is interpolated between approximate locations of published hydration-stop mileages (6.3, 7.6 and 12.0) and the start/finish, not a surveyed GPS trace.
+
+**Suggest stops** maximizes the number of modeled runner sightings at your chosen viewing stops after the selected clock time. Each repeat sighting counts again. It uses a chronological dynamic program, permits waiting at the same spot for multiple friends, and requires transfer time plus the chosen early/late buffer before changing spots. The first trip to the first stop is excluded. Travel uses straight-line distance × the adjustable detour multiplier, with assumed bike/walk speed and bike pickup/docking time; no navigable road route or future station inventory is checked. Check the linked transfer directions and race-day access. This is a planning estimate, not a guarantee that a transfer can be made.
+
+Plans and selections are stored locally in the visitor's browser. **Share plan** puts a snapshot in the URL fragment, including names, bibs, paces, observed splits and stops. That snapshot is not committed to this public repository. Anyone who receives the link can read the plan. Further edits stay local until a new link is shared. There is no shared editing or background synchronization.
+
+Automatic bib lookup is **not connected**. The [official tracking provider's developer documentation](https://rtrt.me/docs/api) requires approved API access. The bib button copies the bib and opens the [official 2026 tracker](https://track.rtrt.me/e/PHIL-MARATHON-2026) for manual lookup. The app never presents its own projections as official live positions or GPS.
