@@ -50,3 +50,37 @@ export function buildItinerary(events,options={}) {
 }
 export function validRunner(r) {return r&&typeof r.id==='string'&&typeof r.name==='string'&&r.name.length<=60&&Number.isFinite(r.pace)&&r.pace>=180&&r.pace<=1800&&Number.isFinite(r.start)&&r.start>=360&&r.start<=720&&(r.anchorMile==null||Number.isFinite(r.anchorMile)&&r.anchorMile>=0&&r.anchorMile<=RACE_MILES&&Number.isFinite(r.anchorTime)&&r.anchorTime>=r.start&&(r.anchorMile===0||r.anchorTime>r.start)&&r.anchorTime<1440);}
 export function validStop(s) {return s&&typeof s.id==='string'&&typeof s.name==='string'&&s.name.length<=200&&Number.isFinite(s.mile)&&s.mile>=0&&s.mile<=RACE_MILES&&Array.isArray(s.point)&&s.point.length===2&&Number.isFinite(s.point[0])&&Number.isFinite(s.point[1])&&s.point[0]>-75.3&&s.point[0]<-75.0&&s.point[1]>39.8&&s.point[1]<40.1;}
+
+export function automaticStops(stations,model,chosen=new Set()) {
+  const eligible=stations.filter(s=>chosen.size?chosen.has(s.station_id):s.distance<=300);
+  let passes=eligible.flatMap(s=>stationPasses(s,model,300).map(p=>({id:`${s.station_id}-${Math.round(p.mile*100)}`,name:s.name,mile:p.mile,point:p.point,stationId:s.station_id,accessMetres:p.distance})));
+  passes.sort((a,b)=>a.mile-b.mile||a.accessMetres-b.accessMetres);
+  if(chosen.size){const result=[];for(const p of passes){const near=result.findIndex(s=>Math.abs(s.mile-p.mile)<.18);if(near<0)result.push(p);else if(p.accessMetres<result[near].accessMetres)result[near]=p;}if(result.length<=20)return result;return Array.from({length:20},(_,i)=>result[Math.round(i*(result.length-1)/19)]);}
+  const stops=[];
+  for(const target of [.7,2,3.5,4.8,6.3,7.6,8.8,10,12,13.1]){
+    const options=passes.filter(p=>Math.abs(p.mile-target)<=.8&&!stops.some(s=>Math.abs(s.mile-p.mile)<.3)).sort((a,b)=>(Math.abs(a.mile-target)+a.accessMetres/1400)-(Math.abs(b.mile-target)+b.accessMetres/1400));if(options.length)stops.push(options[0]);
+  }
+  return stops.sort((a,b)=>a.mile-b.mile);
+}
+export function fairCoverage(plan,runners) {const counts=Object.fromEntries(runners.map(r=>[r.id,0]));for(const visit of plan)for(const event of visit.events)counts[event.runner.id]=(counts[event.runner.id]||0)+1;return counts;}
+export function buildFairItinerary(events,runners,options={}) {
+  const {buffer=3,from=420,speed=10,detour=1.5,setup=5,mode='bike',maxVisits=4,target=3,beam=16}=options;
+  const indexes=new Map(runners.map((r,i)=>[r.id,i]));
+  const nodes=events.filter(e=>e.time>=from&&indexes.has(e.runner.id)).map(e=>({...e,start:Math.max(from,e.time-buffer),end:e.time+buffer})).sort((a,b)=>a.time-b.time);
+  if(!nodes.length||!runners.length)return [];
+  const travel=new Map(),getTravel=(a,b)=>{const key=`${a.id}|${b.id}`;if(!travel.has(key))travel.set(key,travelMinutes(a,b,{speed,detour,setup,mode}));return travel.get(key);};
+  // Compare coverage before repeat sightings: everyone once, then twice, then three times.
+  const compare=(a,b)=>{for(let i=0;i<target;i++)if(a.levels[i]!==b.levels[i])return b.levels[i]-a.levels[i];return a.visits-b.visits||a.travel-b.travel;};
+  const states=[];let best=null;
+  for(let j=0;j<nodes.length;j++){
+    const racer=indexes.get(nodes[j].runner.id),candidates=new Map();
+    function add(previous,travelTime,visits){const counts=previous?previous.counts.slice():Array(runners.length).fill(0);if(counts[racer]>=target||visits>maxVisits)return;const levels=previous?previous.levels.slice():Array(target).fill(0);levels[counts[racer]]++;counts[racer]++;const state={counts,levels,visits,travel:(previous?.travel||0)+travelTime,previous,index:j};const key=counts.join(',');const existing=candidates.get(key);if(!existing||compare(state,existing)<0)candidates.set(key,state);}
+    add(null,0,1);
+    for(let i=0;i<j;i++){const same=nodes[i].stop.id===nodes[j].stop.id,minutes=same?0:getTravel(nodes[i].stop,nodes[j].stop);if(!same&&nodes[i].end+minutes>nodes[j].start)continue;for(const prior of states[i])add(prior,minutes,prior.visits+(same?0:1));}
+    states[j]=[...candidates.values()].sort(compare).slice(0,beam);
+    for(const state of states[j])if(!best||compare(state,best)<0)best=state;
+  }
+  const path=[];for(let s=best;s;s=s.previous)path.unshift(nodes[s.index]);
+  const result=[];for(const event of path){const last=result.at(-1);if(last?.stop.id===event.stop.id){last.events.push(event);last.end=event.end;}else result.push({stop:event.stop,start:event.start,end:event.end,events:[event]});}
+  return result.map((v,i)=>({...v,travel:i?getTravel(result[i-1].stop,v.stop):0}));
+}

@@ -1,49 +1,46 @@
-# Along the Course — Philly Half + Indego
+# Along the Course — Philly Half
 
-A public, mobile-friendly map of Indego bike stations near the November 21, 2026 Philadelphia Half Marathon.
+A public GitHub Pages companion for the November 21, 2026 Philadelphia Half Marathon.
 
-- Live bikes, e-bikes and open docks from Indego's public GBFS feeds.
-- Refreshes every 60 seconds while open; shows feed and station timestamps.
-- Marks data older than five minutes as stale. Cached counts are never presented as current after a request failure.
-- Search stations, filter by distance or availability, sort, open walking directions and share a station/filter link.
-- Runs entirely in your browser. No API keys, server, npm install or paid service required.
+## Use it
 
-## Publish on GitHub Pages
+1. Tap a bike station on the map, or choose **+ Pin stations**. As soon as one is pinned, all other bike stations disappear. Add as many pins as you want in the picker. **Unpin all** returns to the full nearby map.
+2. Enter a racer's name or bib and pace, then press **Add** or Enter. **Paste a list** adds several at once (`Alex, 8:30`, one per line). Starts default to 7 AM; tap a racer to edit their start time, bib, pace or observed split.
+3. The cheering plan appears automatically. No viewing-stop configuration is required. With no pins it chooses representative viewing spots near Indego stations. Pins limit the choices to those stations, including separate nearby course passes.
 
-In this repository's **Settings → Pages**, choose **Deploy from a branch**, then **main** and **/ (root)**. Save. GitHub will show the public URL after deployment.
+The race clock moves projected racer dots. It does not erase earlier stops from the full-morning schedule. Bike/Walk changes the transfer estimates. Plans and pins are stored on the visitor's device. **Share plan** encodes a snapshot in the link's URL fragment; it includes names, bibs, pace estimates, splits and pins. Later edits need a new link. Nothing entered by visitors is committed to this repository.
 
-## Run locally
+## Fair planning
 
-Run `python3 -m http.server 4173` in this directory and open `http://localhost:4173`. Do not open `index.html` as a file: browsers block its data requests.
+The bounded multi-state search prioritizes:
 
-Run `npm test` to check distance calculations, feed joining, rental status, missing data and stale-count filtering. No dependency install is needed (Node 20+ recommended).
+1. Seeing as many distinct racers as possible once.
+2. Giving as many as possible a second sighting.
+3. Giving as many as possible a third sighting.
+4. Fewer stops and less estimated travel.
 
-## Course accuracy and race access
+It targets up to three sightings per racer with at most four stops. This is a balanced suggestion, not an exhaustive global optimization. Transfers require a 3-minute early/late buffer, 10 mph bike or 3 mph walking speed, straight-line distance × 1.5, and 5 minutes for bike pickup/docking. Waiting at one stop for several racers is supported. The first trip to the first stop is excluded. At most 20 representative course areas are considered if a large set of pins is selected.
 
-`data/route.geojson` is an **approximate street-intersection trace**, manually derived from the [official 2026 course map](https://www.philadelphiamarathon.com/wp-content/uploads/2026/08/2026-dietz-watson-philadelphia-half-marathon-082826b.pdf). Curving roads are simplified. It is not an official GPS track, certified measurement, or navigation route. Distances and course order are estimates; use the linked official map as the authority. This can affect which stations fall near a distance cutoff.
+## Official live view
 
-The default includes stations within approximately 300 m (~1,000 ft), measured in a straight line. Barriers, bridges, park slopes and race closures can make walking distances longer. The map does not imply bikes can be ridden on the active racecourse. Live station status does not guarantee race-day access.
+**Official live** embeds the [official public RTRT tracker](https://track.rtrt.me/e/PHIL-MARATHON-2026), keeping its own controls and live data in RTRT's interface. It expands to fill the screen on phones. If embedding fails, use **Open separately**. Bib racers have a shortcut that copies their bib and opens this view; search the bib in the tracker.
 
-## Data and privacy
+This is not a direct API integration. The API root returns `access_denied` without a valid application ID, and [RTRT developer documentation](https://rtrt.me/docs/api) requires approved application access. No credentials are extracted, proxied or reused. The embedded tracker's favorites and live data do not sync to our planner. Our map dots remain explicitly labeled pace/split projections; manually entered observed splits refine their estimates. Official race data appears when the organizer makes it available.
 
-Station locations: `https://gbfs.bcycle.com/bcycle_indego/station_information.json`
+## Bike data and map accuracy
 
-Availability: `https://gbfs.bcycle.com/bcycle_indego/station_status.json`
+Indego locations: `https://gbfs.bcycle.com/bcycle_indego/station_information.json`.
 
-See [Indego's official data page](https://www.rideindego.com/about/data/). A bundled station-location file is used only if the location feed fails; no historic counts are bundled. Last successful live counts are cached in the visitor's local browser storage and labeled with their original timestamps. Location is requested only when the visitor clicks **My location**; the site does not store or upload it. Walking directions open Google Maps with the station destination. Map tiles come from OpenStreetMap; those providers receive normal web requests.
+Live bikes and docks: `https://gbfs.bcycle.com/bcycle_indego/station_status.json`, refreshed every 60 seconds while the page is open. Data older than five minutes is marked stale. Missing data is never represented as zero. Bundled station locations are a fallback; no historical availability is bundled.
+
+The course is an approximate street-intersection trace of the [official map](https://www.philadelphiamarathon.com/wp-content/uploads/2026/08/2026-dietz-watson-philadelphia-half-marathon-082826b.pdf). Mile positions are interpolated between approximate locations of published hydration mileages and the start/finish. It is not a certified GPS track or navigation route. Stations within roughly 300 metres (~1,000 ft) of the trace appear by default. Distances are straight-line estimates. Bridges, park slopes, barricades and security can prevent access. Verify race-day crossings and linked directions; today's bike count does not predict future availability.
+
+## Run and publish
+
+No build, install, server-side API key or paid service is required. For local preview run `python3 -m http.server 4173` in this folder and open `http://localhost:4173`. Run `npm test` for the projection, filtering, transfer and fairness checks (Node 20+).
+
+GitHub Pages publishes from **main / (root)**. Keep `.nojekyll`. No Actions credentials or data-polling workflow are required.
 
 ## Credits
 
-[Leaflet 1.9.4](https://leafletjs.com), BSD-2-Clause, vendored under `vendor/` with its license. Basemap © [OpenStreetMap contributors](https://www.openstreetmap.org/copyright). Bike data: Indego / Bicycle Transit Systems. Independent spectator tool, unaffiliated with Indego or Philadelphia Marathon Weekend.
-
-## Spectator planner
-
-Use the station checkboxes to choose stations, then enable **Show selected only** to hide the others. **Runners & plan** supports up to 20 friends with individual paces, start-line crossing times and optional bibs. You can enter an observed distance/time split to anchor subsequent projections. Enter paces as `min:sec` per mile; all clocks are November 21, 2026 in Philadelphia (EST).
-
-The time slider moves projected runner markers along the approximate course. Add viewing stops from selected stations or a course mile to see each friend's estimated arrival window. Stations within 300 metres of multiple separate course passes can create multiple viewing stops. Course mileage is interpolated between approximate locations of published hydration-stop mileages (6.3, 7.6 and 12.0) and the start/finish, not a surveyed GPS trace.
-
-**Suggest stops** maximizes the number of modeled runner sightings at your chosen viewing stops after the selected clock time. Each repeat sighting counts again. It uses a chronological dynamic program, permits waiting at the same spot for multiple friends, and requires transfer time plus the chosen early/late buffer before changing spots. The first trip to the first stop is excluded. Travel uses straight-line distance × the adjustable detour multiplier, with assumed bike/walk speed and bike pickup/docking time; no navigable road route or future station inventory is checked. Check the linked transfer directions and race-day access. This is a planning estimate, not a guarantee that a transfer can be made.
-
-Plans and selections are stored locally in the visitor's browser. **Share plan** puts a snapshot in the URL fragment, including names, bibs, paces, observed splits and stops. That snapshot is not committed to this public repository. Anyone who receives the link can read the plan. Further edits stay local until a new link is shared. There is no shared editing or background synchronization.
-
-Automatic bib lookup is **not connected**. The [official tracking provider's developer documentation](https://rtrt.me/docs/api) requires approved API access. The bib button copies the bib and opens the [official 2026 tracker](https://track.rtrt.me/e/PHIL-MARATHON-2026) for manual lookup. The app never presents its own projections as official live positions or GPS.
+[Leaflet 1.9.4](https://leafletjs.com), BSD-2-Clause, vendored with its license. Basemap © [OpenStreetMap contributors](https://www.openstreetmap.org/copyright). Bike data: Indego / Bicycle Transit Systems. Independent spectator tool, unaffiliated with Indego, RTRT or Philadelphia Marathon Weekend. Location is requested only on clicking the location button and is not stored by this site. Map tile providers and the official tracker receive normal browser requests when used.

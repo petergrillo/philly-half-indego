@@ -12,3 +12,21 @@ test('itinerary accounts for buffers and avoids impossible transfers',()=>{const
 test('optimization chooses more sightings over an early dead end',()=>{const a={id:'x',mile:1,point:[-75.3,39.9]},b={id:'y',mile:2,point:[-75.14,39.96]};const events=[{id:'1',stop:a,runner:alex,time:430},{id:'2',stop:b,runner:alex,time:435},{id:'3',stop:b,runner:sam,time:438}];const plan=buildItinerary(events,{from:420,buffer:3,speed:3,mode:'walk',detour:2});assert.equal(plan.reduce((n,v)=>n+v.events.length,0),2);assert.equal(plan[0].stop.id,'y');});
 test('overlapping sighting windows at one stop can all be covered by waiting',()=>{const point=stops[0],events=[430,435,440].map((time,i)=>({id:String(i),stop:point,runner:alex,time}));const plan=buildItinerary(events,{from:420,buffer:3});assert.equal(plan.length,1);assert.equal(plan[0].events.length,3);assert.equal(plan[0].start,427);assert.equal(plan[0].end,443);});
 test('a sighting at the selected start time remains eligible',()=>{const plan=buildItinerary([{id:'now',stop:stops[0],runner:alex,time:420}],{from:420,buffer:3});assert.equal(plan.length,1);assert.equal(plan[0].start,420);});
+
+import {buildFairItinerary,fairCoverage,automaticStops} from '../planner.js';
+test('fair planning sees everyone before collecting extra sightings of one friend',()=>{
+ const x={id:'west',point:[-75.27,39.9]},y={id:'east',point:[-75.14,39.96]};
+ const events=[{id:'a1',runner:alex,stop:x,time:430},{id:'a2',runner:alex,stop:x,time:440},{id:'a3',runner:alex,stop:x,time:450},{id:'b1',runner:sam,stop:y,time:435},{id:'a4',runner:alex,stop:y,time:434}];
+ const plan=buildFairItinerary(events,[alex,sam],{from:420,mode:'walk',speed:3,detour:2});assert.deepEqual(fairCoverage(plan,[alex,sam]),{a:1,b:1});
+});
+test('fair planning balances second sightings before a third',()=>{
+ const x={id:'west',point:[-75.27,39.9]},y={id:'east',point:[-75.14,39.96]};
+ const entries=[[x,alex,430],[x,alex,440],[x,alex,450],[x,sam,435],[y,alex,432],[y,alex,442],[y,sam,436],[y,sam,446]];
+ const events=entries.map(([stop,runner,time],i)=>({id:String(i),stop,runner,time}));const plan=buildFairItinerary(events,[alex,sam],{from:420,mode:'walk',speed:3,detour:2});assert.deepEqual(fairCoverage(plan,[alex,sam]),{a:2,b:2});
+});
+test('fair plans respect transfer windows, visit limit, and three sightings per racer',()=>{
+ const places=Array.from({length:8},(_,i)=>({id:'p'+i,mile:i+1,point:[-75.16+i*.001,39.95]})),events=sightings([alex,sam],places,3),plan=buildFairItinerary(events,[alex,sam],{from:420,maxVisits:4});assert.ok(plan.length<=4);for(let i=1;i<plan.length;i++)assert.ok(plan[i-1].end+plan[i].travel<=plan[i].start);const counts=fairCoverage(plan,[alex,sam]);assert.ok(counts.a<=3&&counts.b<=3);assert.equal(counts.a,counts.b);
+});
+test('pinning narrows automatic viewing options to the pinned station',()=>{
+ const station={station_id:'museum',name:'Museum',lon:-75.17987,lat:39.96439,distance:100};const selected=automaticStops([station],model,new Set(['museum']));assert.ok(selected.length>0);assert.ok(selected.every(s=>s.stationId==='museum'));assert.equal(automaticStops([station],model,new Set(['other'])).length,0);
+});
